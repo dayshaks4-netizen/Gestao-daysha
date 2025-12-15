@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Vendas - Protegida</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
+        h1, h2 { color: #333; }
+        #login { max-width: 400px; margin: auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        input, button { padding: 10px; margin: 10px 0; width: 100%; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #content { display: none; max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f0f0f0; }
+        .delete-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="login">
+    <h1>Gestão de Vendas</h1>
+    <p>Digite a senha para acessar:</p>
+    <input type="password" id="passwordInput" placeholder="Senha">
+    <button onclick="checkPassword()">Entrar</button>
+    <p id="error" style="color: red; display: none;">Senha incorreta!</p>
+</div>
+
+<div id="content">
+    <h1>Gestão de Vendas</h1>
+    <p>Bem-vindo! Registre suas vendas abaixo.</p>
+    
+    <h2>Nova Venda</h2>
+    <input type="date" id="data" required>
+    <input type="text" id="produto" placeholder="Produto" required>
+    <input type="number" id="valor" placeholder="Valor (R$)" step="0.01" required>
+    <input type="text" id="cliente" placeholder="Cliente">
+    <button onclick="addVenda()">Adicionar Venda</button>
+
+    <h2>Vendas Registradas</h2>
+    <table id="tabelaVendas">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Produto</th>
+                <th>Valor</th>
+                <th>Cliente</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <p><button onclick="logout()">Sair (bloquear acesso)</button></p>
+</div>
+
+<script>
+    // === MUDE AQUI O HASH DA SUA SENHA ===
+    const passwordHash = "9e0cbac65bface6645d674ec1f916b7f023d07e19f7cc0f669a9e8f6e5596faf"; // Hash de exemplo (senha "admin123" - MUDE!)
+
+    function sha256(str) {
+        // Função simples de hash SHA-256 (usando Web Crypto API)
+        const buffer = new TextEncoder().encode(str);
+        return crypto.subtle.digest('SHA-256', buffer).then(hash => {
+            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+        });
+    }
+
+    async function checkPassword() {
+        const input = document.getElementById('passwordInput').value;
+        const inputHash = await sha256(input);
+        if (inputHash === passwordHash) {
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            loadVendas();
+        } else {
+            document.getElementById('error').style.display = 'block';
+        }
+    }
+
+    function loadVendas() {
+        const tbody = document.querySelector('#tabelaVendas tbody');
+        tbody.innerHTML = '';
+        const vendas = JSON.parse(localStorage.getItem('vendas') || '[]');
+        let total = 0;
+        vendas.forEach((v, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${v.data}</td>
+                <td>${v.produto}</td>
+                <td>R$ ${parseFloat(v.valor).toFixed(2)}</td>
+                <td>${v.cliente || '-'}</td>
+                <td><button class="delete-btn" onclick="deleteVenda(${i})">Excluir</button></td>
+            `;
+            tbody.appendChild(tr);
+            total += parseFloat(v.valor);
+        });
+        // Adiciona linha de total
+        const trTotal = document.createElement('tr');
+        trTotal.innerHTML = `<td colspan="2"><strong>Total</strong></td><td><strong>R$ ${total.toFixed(2)}</strong></td><td colspan="2"></td>`;
+        tbody.appendChild(trTotal);
+    }
+
+    function addVenda() {
+        const data = document.getElementById('data').value;
+        const produto = document.getElementById('produto').value;
+        const valor = document.getElementById('valor').value;
+        const cliente = document.getElementById('cliente').value;
+
+        if (!data || !produto || !valor) {
+            alert('Preencha os campos obrigatórios!');
+            return;
+        }
+
+        const vendas = JSON.parse(localStorage.getItem('vendas') || '[]');
+        vendas.push({ data, produto, valor, cliente });
+        localStorage.setItem('vendas', JSON.stringify(vendas));
+
+        // Limpa campos
+        document.getElementById('data').value = '';
+        document.getElementById('produto').value = '';
+        document.getElementById('valor').value = '';
+        document.getElementById('cliente').value = '';
+
+        loadVendas();
+    }
+
+    function deleteVenda(index) {
+        if (confirm('Excluir esta venda?')) {
+            const vendas = JSON.parse(localStorage.getItem('vendas') || '[]');
+            vendas.splice(index, 1);
+            localStorage.setItem('vendas', JSON.stringify(vendas));
+            loadVendas();
+        }
+    }
+
+    function logout() {
+        document.getElementById('login').style.display = 'block';
+        document.getElementById('content').style.display = 'none';
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('error').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
